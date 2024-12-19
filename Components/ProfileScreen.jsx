@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
 import { useProfileContext } from './ContextCode';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { launchImageLibrary } from 'react-native-image-picker';
 import RNFS from 'react-native-fs';
 
 const ProfileScreen = ({ navigation }) => {
@@ -45,6 +46,26 @@ const ProfileScreen = ({ navigation }) => {
     setIsCameraActive(false); // Deactivate camera after capturing
   };
 
+  const selectFromGallery = async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 1,
+        includeBase64: true,
+      });
+
+      if (result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        const base64Image = `data:image/jpeg;base64,${selectedImage.base64}`;
+        setProfileImage(base64Image);
+        Alert.alert('Success', 'Image selected successfully!');
+      }
+    } catch (error) {
+      console.error('Error selecting image from gallery:', error);
+      Alert.alert('Error', 'Failed to select image.');
+    }
+  };
+
   const saveData = async () => {
     if (!name || !about || !phoneNumber || !profileImage) {
       Alert.alert('Error', 'All fields are required, including a profile image.');
@@ -61,65 +82,68 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to save profile.');
     }
   };
-return (
+
+  return (
     <View style={styles.container}>
-          {/* Check if permission is granted */}
-          {!hasPermission ? (
-            <Text style={styles.permissionText}>Camera permission is required</Text>
+      {!hasPermission ? (
+        <Text style={styles.permissionText}>Camera permission is required</Text>
+      ) : (
+        <>
+          {isCameraActive ? (
+            <>
+              <Camera
+                style={styles.camera}
+                device={device}
+                isActive={true}
+                ref={cameraRef}
+                photo={true}
+              />
+              <TouchableOpacity onPress={captureImage} style={styles.captureButton}>
+                <Text style={styles.captureButtonText}>Capture</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <>
-              {isCameraActive ? (
-                <>
-                  <Camera
-                    style={styles.camera}
-                    device={device}
-                    isActive={true}
-                    ref={cameraRef}
-                    photo={true}
-                  />
-                  <TouchableOpacity onPress={captureImage} style={styles.captureButton}>
-                    <Text style={styles.captureButtonText}>Capture</Text>
-                  </TouchableOpacity>
-                </>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profileImage} />
               ) : (
-                <>
-                  {profileImage ? (
-                    <Image source={{ uri: profileImage }} style={styles.profileImage} />
-                  ) : (
-                    <View style={[styles.profileImage, styles.placeholder]}>
-                      <Text style={styles.placeholderText}>No Image</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity onPress={() => setIsCameraActive(true)} style={styles.button}>
-                    <Text style={styles.buttonText}>Capture Image</Text>
-                  </TouchableOpacity>
-                </>
+                <View style={[styles.profileImage, styles.placeholder]}>
+                  <Text style={styles.placeholderText}>No Image</Text>
+                </View>
               )}
+              <TouchableOpacity onPress={() => setIsCameraActive(true)} style={styles.button}>
+                <Text style={styles.buttonText}>Capture Image</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={selectFromGallery} style={styles.button}>
+                <Text style={styles.buttonText}>Select from Gallery</Text>
+              </TouchableOpacity>
             </>
           )}
-    
-          {/* Input Fields */}
-          <Text style={styles.label}>Name:</Text>
-          <TextInput value={name} onChangeText={setName} style={styles.input} />
-    
-          <Text style={styles.label}>About:</Text>
-          <TextInput value={about} onChangeText={setAbout} style={styles.input} />
-    
-          <Text style={styles.label}>Phone Number:</Text>
-          <TextInput
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
-    
-          {!isCameraActive && (
-            <TouchableOpacity onPress={saveData} style={styles.button}>
-              <Text style={styles.buttonText}>Save</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      );
+        </>
+      )}
+
+      {/* Input Fields */}
+      <Text style={styles.label}>Name:</Text>
+      <TextInput value={name} onChangeText={setName} style={styles.input} />
+
+      <Text style={styles.label}>About:</Text>
+      <TextInput value={about} onChangeText={setAbout} style={styles.input} />
+
+      <Text style={styles.label}>Phone Number:</Text>
+      <TextInput
+        value={phoneNumber}
+        onChangeText={setPhoneNumber}
+        keyboardType="phone-pad"
+        style={styles.input}
+      />
+
+      {!isCameraActive && (
+        <TouchableOpacity onPress={saveData} style={styles.button}>
+          <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
